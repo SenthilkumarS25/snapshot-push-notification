@@ -1,25 +1,34 @@
-# Use an official OpenJDK runtime as a parent image
-FROM openjdk:8
+# Use an official Amazon Corretto Ubuntu image
+FROM amazoncorretto:8
 
-# Install necessary packages
-RUN apt-get update && \
-    apt-get install -y wget unzip tar curl lib32stdc++6 lib32z1
+# Enable multiarch support and install necessary packages
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y \
+    wget \
+    unzip \
+    tar \
+    curl \
+    libc6:i386 \
+    libncurses5:i386 \
+    libstdc++6:i386 \
+    zlib1g:i386
+
+# Install additional packages and setup SDK as before
+# Download and install Android SDK
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip -O /tmp/cmdline-tools.zip && \
+    mkdir -p /opt/android-sdk/cmdline-tools && \
+    unzip /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools && \
+    rm /tmp/cmdline-tools.zip && \
+    mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/tools
 
 # Set environment variables
 ENV ANDROID_SDK_ROOT /opt/android-sdk
-ENV PATH ${PATH}:${ANDROID_SDK_ROOT}/tools:${ANDROID_SDK_ROOT}/platform-tools
+ENV PATH ${PATH}:${ANDROID_SDK_ROOT}/tools:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/tools/bin
 
-# Download and install Android SDK
-RUN wget https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip -O /tmp/sdk-tools-linux.zip && \
-    mkdir -p ${ANDROID_SDK_ROOT} && \
-    unzip /tmp/sdk-tools-linux.zip -d ${ANDROID_SDK_ROOT} && \
-    rm /tmp/sdk-tools-linux.zip
-
-# Accept licenses
-RUN yes | sdkmanager --licenses
-
-# Install specific tools and system images
-RUN sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3" "emulator" "system-images;android-30;google_apis;x86_64"
+# Accept licenses and install required packages
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3" "emulator" "system-images;android-30;google_apis;x86_64"
 
 # Create and start an Android Virtual Device (AVD)
 RUN echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
