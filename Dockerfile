@@ -1,56 +1,60 @@
-# Use an official Amazon Corretto Ubuntu image
-FROM amazoncorretto:8
+# Use Amazon Corretto as a base image
+FROM amazoncorretto:11
 
-# Enable multiarch support and install necessary packages
-RUN dpkg --add-architecture i386 && \
-    apt-get update && \
-    apt-get install -y \
+# Set environment variables for non-interactive installs and paths
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+
+# Update and install required packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
-    unzip \
-    tar \
     curl \
-    libc6:i386 \
-    libncurses5:i386 \
-    libstdc++6:i386 \
-    zlib1g:i386
-
-# Install additional packages and setup SDK as before
-# Download and install Android SDK
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip -O /tmp/cmdline-tools.zip && \
-    mkdir -p /opt/android-sdk/cmdline-tools && \
-    unzip /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools && \
-    rm /tmp/cmdline-tools.zip && \
-    mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/tools
-
-# Set environment variables
-ENV ANDROID_SDK_ROOT /opt/android-sdk
-ENV PATH ${PATH}:${ANDROID_SDK_ROOT}/tools:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/tools/bin
-
-# Accept licenses and install required packages
-RUN yes | sdkmanager --licenses && \
-    sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3" "emulator" "system-images;android-30;google_apis;x86_64"
-
-# Create and start an Android Virtual Device (AVD)
-RUN echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
+    gnupg \
+    unzip \
+    libc6-i386 \
+    lib32stdc++6 \
+    lib32z1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
-    apt-get install -y nodejs
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get install -y nodejs
 
-# Create app directory
-WORKDIR /usr/src/app
+# Download and install Android SDK command-line tools
+RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
+    && cd $ANDROID_SDK_ROOT/cmdline-tools \
+    && wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip \
+    && unzip tools.zip -d latest \
+    && rm tools.zip
 
-# Copy package.json and install dependencies
-COPY package*.json ./
+# Ensure sdkmanager is executable
+RUN chmod +x $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+
+# Accept the licenses
+RUN yes | sdkmanager --licenses
+
+# Update SDK manager and install required SDK packages
+RUN sdkmanager --update \
+    && sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3" "emulator" "system-images;android-30;google_apis;x86_64"
+
+# Create and start the emulator
+RUN echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
+RUN $ANDROID_SDK_ROOT/emulator/emulator @test -no-skin -no-audio -no-window &
+
+# Clean up
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Copy the application files
+COPY . /app
+WORKDIR /app
+
+# Install Node.js dependencies
 RUN npm install
 
-# Copy app source code
-COPY . .
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Expose the port the app runs on
-EXPOSE 3000
-
-# Start the Android emulator and Node.js server
-CMD ${ANDROID_SDK_ROOT}/emulator/emulator -avd test -no-snapshot-save -no-audio -no-window & \
-    adb wait-for-device && \
-    node index.js
+# Define the entry point
+ENTRYPOINT ["/entrypoint.sh"]
