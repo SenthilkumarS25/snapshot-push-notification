@@ -2,23 +2,26 @@
 FROM amazoncorretto:11
 
 # Install dependencies
-RUN yum update -y && \
-    yum install -y \
-    glibc.i686 \
-    libstdc++ libstdc++.i686 \
-    zlib.i686 \
-    ncurses-compat-libs \
+RUN apt-get update && \
+    apt-get install -y \
+    libc6-i386 \
+    lib32stdc++6 \
+    lib32z1 \
+    libncurses5:i386 \
+    libstdc++6:i386 \
+    libz1:i386 \
+    zlib1g:i386 \
     wget \
     unzip \
-    libX11 \
-    libXrender \
-    libXrandr \
-    libXcursor \
-    libXinerama \
-    libXi \
+    libx11-6 \
+    libxrender1 \
+    libxrandr2 \
+    libxcursor1 \
+    libxinerama1 \
+    libxi6 \
     qemu-kvm \
     sudo \
-    && yum clean all
+    && apt-get clean
 
 # Set up environment variables
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
@@ -37,8 +40,8 @@ RUN echo "no" | $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools/bin/avdmanager cre
     echo "hw.cpu.ncore=2" >> $ANDROID_SDK_ROOT/.android/avd/test.avd/config.ini
 
 # Install Node.js
-RUN curl -fsSL https://rpm.nodesource.com/setup_14.x | sudo bash - && \
-    yum install -y nodejs
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
+    apt-get install -y nodejs
 
 # Copy your appium server and node app
 WORKDIR /usr/src/app
