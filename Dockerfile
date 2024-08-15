@@ -4,6 +4,16 @@ FROM amazoncorretto:11
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    software-properties-common
+
+# Add the i386 architecture
+RUN dpkg --add-architecture i386
+
+# Update again to fetch i386 packages
+RUN apt-get update && \
+    apt-get install -y \
     libc6-i386 \
     lib32stdc++6 \
     lib32z1 \
