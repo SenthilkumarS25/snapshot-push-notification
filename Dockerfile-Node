@@ -1,0 +1,26 @@
+FROM node:18-alpine
+
+# Install Android SDK and tools
+RUN apk add --no-cache wget unzip && \
+    wget -qO android-sdk.zip https://dl.google.com/android/repository/sdk-tools-linux-4333748.zip && \
+    unzip -q android-sdk.zip -d /opt/android-sdk && \
+    rm android-sdk.zip && \
+    export PATH=$PATH:/opt/android-sdk/tools/bin:/opt/android-sdk/platform-tools && \
+    echo "/opt/android-sdk/licenses" >> ~/.bashrc && \
+    echo "yes" | sdkmanager --licenses
+
+# Install Appium
+RUN npm install -g appium
+
+# Copy your project files
+COPY package*.json ./
+RUN npm install
+
+# Copy your source code
+COPY . .
+
+# Expose the port for Appium
+EXPOSE 4723
+
+# Start Android Studio Emulator and Appium
+CMD ["bash", "-c", "android-studio & appium"]
