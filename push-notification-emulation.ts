@@ -1,6 +1,6 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
-const path = require('path');
+import express from 'express';
+import puppeteer from 'puppeteer';
+import path from 'path';
 
 const app = express();
 
@@ -31,6 +31,7 @@ app.get('/screenshot', async (req, res) => {
 });
 
 // Start the server
-app.listen(3000, () => {
-    console.log('Server is running on http://localhost:3000');
+const port = 3000;
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
 });
